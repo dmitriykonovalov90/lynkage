@@ -67,19 +67,19 @@ def test_work_hours_fact():
     cur_etl = connection.cursor()
     cur_etl.execute("select sum(duration) from mv_user_status_period_daily_n where "
                     "partner_uuid = %s "
-                    "and date_work between %s and %s "
+                    "and date_work between '2021-04-01' and '2021-04-30' "
                     "and (ringing = 'ringing' or speaking = 'speaking' or normal = 'normal' or wrapup = 'wrapup') "
                     "and away_status_reason is null and online_status = 'online'",
-                    (PARTNER_UUID, first_day_of_current_period, last_day_of_current_month, ))
+                    (PARTNER_UUID,  ))
     result_sql_requests = cur_etl.fetchone()
 
     body = {
-            "indicator_acronim": indicator,
-            "object_id": ORGANIZATION_ID,
-            "object_type": OBJECT_TYPE,
+            "indicator_acronim": "tele2_operator_line_work_hours",
+            "object_id": 1,
+            "object_type": "organization",
             "parameters": {
-                "period_begin": first_period,
-                "period_end": end_period
+                "period_begin": "2021-04-01",
+                "period_end": "2021-04-30"
             }
     }
 
@@ -87,6 +87,7 @@ def test_work_hours_fact():
     assert response.status_code != 500, "internal server error"
     assert response.status_code != 405, "Ошибка метода отправки"
     requestdict = json.loads(response.content)
+    print(requestdict)
     assert requestdict['data'][indicator]['value'] == result_sql_requests, "Результат в виджете НЕ соответствует запросу из БД"
 
 

@@ -14,5 +14,5 @@ def get_token():
     response = requests.post('http://localhost/login', data=body)
     assert response.status_code != 500, "Необработанная ошибка от Laravel!"
     requestdict = json.loads(response.content)
-    headers = {"Authorization": 'Bearer ' + requestdict['access_token']}
+    headers = {"Authorization": 'Bearer ' + requestdict['data']['access_token']}
     return headers
