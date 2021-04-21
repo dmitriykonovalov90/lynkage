@@ -464,7 +464,7 @@ def test_aht():
     if result_sql_talking is None:
         result_sql = 0
     else:
-        result_sql = float(total_result_sql / result_sql_talking)
+        result_sql = float(total_result_sql) / float(result_sql_talking)
 
     body = {
             "indicator_acronim": indicator,
@@ -481,7 +481,7 @@ def test_aht():
     assert response.status_code != 500, "internal server error"
     assert response.status_code != 405, "Ошибка метода отправки"
     requestdict = json.loads(response.content)
-    assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5), "Результат в виджете НЕ соответствует запросу из БД"
+    assert round(requestdict['data'][indicator]['value'], 3) == round(result_sql, 3)
 
 
 # Виджет рабочие часы ЗА ТЕКУЩИЙ ДЕНЬ план
@@ -664,7 +664,7 @@ def test_sales_of_the_current_day_fact():
     assert response.status_code != 500, "internal server error"
     assert response.status_code != 405, "Ошибка метода отправки"
     requestdict = json.loads(response.content)
-    assert requestdict['data'][indicator]['value'] == result_sql_requests, "Результат в виджете НЕ соответствует запросу из БД"
+    assert requestdict['data'][indicator]['value'] == int(result_sql_requests), "Результат в виджете НЕ соответствует запросу из БД"
     return result_sql_requests
 
 

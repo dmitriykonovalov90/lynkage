@@ -152,7 +152,7 @@ def test_get_sub_arm_modules():
     assert response.status_code != 404, "Ошибка авторизации"
     assert response.status_code == 200, "Ошибка"
     requestdict = json.loads(response.content)
-    assert len(requestdict['data']) == 11
+    assert len(requestdict['data']) == 12
 
 
 def test_content_work_time_graph_tele2():

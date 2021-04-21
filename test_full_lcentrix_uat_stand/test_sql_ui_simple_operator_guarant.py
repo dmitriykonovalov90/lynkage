@@ -15,12 +15,12 @@ stop_naumen = db_naumen.stop_db_naumen
 
 
 # данные для выполнения теста
-login = 'tv.demenina'
+login = 'ia.kustova'
 client_id = 2
 client_secret = '23IzWSgkX5MUlpxSAYJr2o1sM8DRkLXI7vlZFExW'
 grant_type = 'password'
 organization = 'lcentrix'
-password = "0PV76yin"
+password = "kZ3vPBhH"
 headers = btoken.get_token(login, password, client_secret, grant_type, client_id, organization)
 
 salegroup_id = 101
