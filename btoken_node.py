@@ -11,7 +11,7 @@ def get_token():
         "client_id": 2,
         "organization": "lcentrix"
            }
-    response = requests.post('http://localhost/login', data=body)
+    response = requests.post('https://api.dev.navigator.lynkage.ru/login', data=body)
     assert response.status_code != 500, "Необработанная ошибка от Laravel!"
     requestdict = json.loads(response.content)
     headers = {"Authorization": 'Bearer ' + requestdict['data']['access_token']}

@@ -4,7 +4,7 @@ import psycopg2
 def start_db_localhost():
     conn = psycopg2.connect(
         database="api",
-        user="dashboard",
+        user="dashboard_user",
         password="password",
         host='localhost',
         port=5433,
