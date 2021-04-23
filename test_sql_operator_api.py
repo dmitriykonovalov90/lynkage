@@ -4,13 +4,16 @@ import json
 import db
 import datetime
 import db_n_rtk
+import db_oracle
 import math
 
-global conn, conn_node, server, connection
+global conn, conn_node, server, connection, connection_ora
 start = db.startdb
 stop = db.stopdb
 start_naumen = db_n_rtk.start_db_naumen
 stop_naumen = db_n_rtk.stop_db_naumen
+start_oracle = db_oracle.start_db_oracle
+stop_oracle = db_oracle.stop_db_oracle
 
 login = '13050045Trostina_volga'
 login_non_volga = '13050045Trostina'
@@ -41,9 +44,10 @@ last_day_of_current_month = last_day_of_month(first_day_of_current_period)  # П
 
 # старт подключения к бд через ssh
 def test_startserver():
-    global conn, conn_node, server, connection
+    global conn, conn_node, server, connection, connection_ora
     conn, conn_node, server = start()
     connection = start_naumen()
+    connection_ora = start_oracle()
 
 
 # вычленение id пользователя по имеющемуся логину
@@ -80,23 +84,147 @@ def id_users():
 #     else:
 #         return position_id[0]
 
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ЗАЯВОК ФАКТ                       '''
+#
+#
+# def test_operator_requests_created():
+#     cur_n_rtk = connection.cursor()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_requests_created'
+#     result = 'Согласие клиента'
+#
+#     cur_n_rtk.execute('select sum(calls) from mv_user_calls_result_daily where '
+#                       'login = %s and date_work between %s and %s'
+#                       'and result = %s',
+#                       (login_non_volga, first_period, end_period, result,))
+#
+#     result_sql_requests = cur_n_rtk.fetchone()[0]
+#
+#     if result_sql_requests is None:
+#         result_sql_requests = 0
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\u001B[36mВиджет "Количество заявок", факт')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql_requests)
+#     assert requestdict['data'][indicator]['value'] == result_sql_requests
+#     return result_sql_requests
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ЗАЯВОК ПЛАН                      '''
+#
+#
+# def test_operator_requests_plan():
+#     cur = conn.cursor()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_requests_created_plan'
+#     indicator_id = 2876
+#
+#     cur.execute('select sum(value) from plan_objects_indicators '
+#                 'join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id '
+#                 'join users on users.id = objects_indicators.object_id '
+#                 'where indicator_id = %s and users.id = %s and period_begin between %s and %s',
+#                 (indicator_id, id_users(), first_period, end_period,))
+#
+#     result_sql_requests = cur.fetchone()[0]
+#
+#     if result_sql_requests is None:
+#         result_sql_requests = 0
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Количество заявок", план')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql_requests)
+#     assert requestdict['data'][indicator]['value'] == result_sql_requests
+#     return result_sql_requests
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ЗАЯВОК ПРОЦЕНТЫ                     '''
+#
+#
+# def test_operator_requests_percent():
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_requests_created_plan_percent'
+#     result_request_sql_fact = float(test_operator_requests_created())
+#     result_request_sql_plan = float(test_operator_requests_plan())
+#
+#     if result_request_sql_plan is None:
+#         result_sql = 0
+#     else:
+#         result_sql = result_request_sql_fact * 100 / result_request_sql_plan
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Количество заявок", процент выполнения')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql)
+#     assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5)
 
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ЗАЯВОК                       '''
+
+'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ПОДКЛЮЧЕННЫХ УСЛУГ ФАКТ                       '''
 
 
-def test_operator_requests_created():
-    cur_n_rtk = connection.cursor()
+def test_operator_connected_all_services():
+    cur_ora_rtk = connection_ora.cursor()
     first_period = str(first_day_of_current_period)
     end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_requests_created'
-    result = 'Согласие клиента'
+    indicator = 'connected_all_services_count'
 
-    cur_n_rtk.execute('select sum(calls) from mv_user_calls_result_daily where '
-                      'login = %s and date_work between %s and %s'
-                      'and result = %s',
-                      (login_non_volga, first_period, end_period, result,))
 
-    result_sql_requests = cur_n_rtk.fetchone()[0]
+    cur_ora_rtk.execute('select sum(CNT_ALL) from AGP_V_UNITED_REPORT_RES_LN where '
+                      'STARTID = %s',
+                      (8847,))
+
+    result_sql_requests = cur_ora_rtk.fetchone()[0]
+    print(result_sql_requests)
 
     if result_sql_requests is None:
         result_sql_requests = 0
@@ -117,12 +245,11 @@ def test_operator_requests_created():
     assert response.status_code != 500, "internal server error"
     assert response.status_code != 405, "Ошибка метода отправки"
     requestdict = json.loads(response.content)
-    print('api:', requestdict)
-    print('sql:', result_sql_requests)
+    print('\n\u001B[36mВиджет "Количество заявок", факт')
+    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+    print('\u001B[33msql:\u001B[0m', result_sql_requests)
     assert requestdict['data'][indicator]['value'] == result_sql_requests
     return result_sql_requests
-
-
 # # Виджет рабочие часы за месяц факт
 # def test_work_hours_of_the_month_fact():
 #     cur_naumen = connection.cursor()
@@ -1680,3 +1807,4 @@ def test_operator_requests_created():
 def test_stopserver():
     stop(conn, conn_node, server)
     stop_naumen(connection)
+    stop_oracle(connection_ora)
