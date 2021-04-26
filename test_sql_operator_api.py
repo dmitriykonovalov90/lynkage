@@ -217,11 +217,11 @@ def test_operator_connected_all_services():
     first_period = str(first_day_of_current_period)
     end_period = str(last_day_of_current_month)
     indicator = 'connected_all_services_count'
+    print(id_users())
 
-
-    cur_ora_rtk.execute('select sum(CNT_ALL) from AGP_V_UNITED_REPORT_RES_LN where '
-                      'STARTID = %s',
-                      (8847,))
+    cur_ora_rtk.execute("""
+    select sum(CNT_ALL) from AGP_V_UNITED_REPORT_RES_LN where AGENT = (:1) and PERIOD in (:1, :1)
+     """, ['Cибаев Аскар Артурович', 201912, 201911])
 
     result_sql_requests = cur_ora_rtk.fetchone()[0]
     print(result_sql_requests)
