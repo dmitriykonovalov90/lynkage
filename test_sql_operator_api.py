@@ -1,3 +1,5 @@
+import pytest
+
 import btoken
 import requests
 import json
@@ -47,20 +49,21 @@ date_current_month = datetime.datetime.now().strftime('%m')
 date_current_oracle = str(date_current_year)+str(date_current_month)
 
 
-# старт подключения к бд через ssh
-def test_startserver():
-    global conn, conn_node, server, connection, connection_ora
-    conn, conn_node, server = start()
-    connection = start_naumen()
-    connection_ora = start_oracle()
+# # старт подключения к бд через ssh
+# def test_startserver():
+#     global conn, conn_node, server, connection, connection_ora
+#     conn, conn_node, server = start()
+#     connection = start_naumen()
+#     connection_ora = start_oracle()
 
-
+# def test_start_db(startserver):
+#     print('start')
 # вычленение id пользователя по имеющемуся логину
-def id_users():
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM users WHERE login = %s", (login,))
-    id_user = cur.fetchone()[0]
-    return id_user
+# def id_users():
+#     cur = conn.cursor()
+#     cur.execute("SELECT id FROM users WHERE login = %s", (login,))
+#     id_user = cur.fetchone()[0]
+#     return id_user
 
 
 def fio_users():
@@ -69,6 +72,8 @@ def fio_users():
     result = cur.fetchall()[0]
     fio_user = (' '.join(result))
     return fio_user
+
+
 # def uuid_operator():
 #     cur = conn.cursor()
 #     user_id = id_users()
@@ -99,26 +104,26 @@ def fio_users():
 '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ЗАЯВОК ФАКТ                       '''
 
 
-def test_operator_requests_created():
-    cur_n_rtk = connection.cursor()
+def test_operator_requests_created(request_created):
+    # cur_n_rtk = connection.cursor()
     first_period = str(first_day_of_current_period)
     end_period = str(last_day_of_current_month)
     indicator = 'rtk_volga_requests_created'
     result = 'Согласие клиента'
+    #
+    # cur_n_rtk.execute('select sum(calls) from mv_user_calls_result_daily where '
+    #                   'login = %s and date_work between %s and %s'
+    #                   'and result = %s',
+    #                   (login_non_volga, first_period, end_period, result,))
 
-    cur_n_rtk.execute('select sum(calls) from mv_user_calls_result_daily where '
-                      'login = %s and date_work between %s and %s'
-                      'and result = %s',
-                      (login_non_volga, first_period, end_period, result,))
-
-    result_sql_requests = cur_n_rtk.fetchone()[0]
+    result_sql_requests = request_created
 
     if result_sql_requests is None:
         result_sql_requests = 0
 
     body = {
             "indicator_acronim": indicator,
-            "object_id": id_users(),
+            "object_id": 12379,
             "object_type": object_type,
             "parameters":
             {
@@ -138,625 +143,627 @@ def test_operator_requests_created():
     assert requestdict['data'][indicator]['value'] == result_sql_requests
     return result_sql_requests
 
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ЗАЯВОК ПЛАН                      '''
-
-
-def test_operator_requests_plan():
-    cur = conn.cursor()
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_requests_created_plan'
-    indicator_id = 2876
-
-    cur.execute('select sum(value) from plan_objects_indicators '
-                'join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id '
-                'join users on users.id = objects_indicators.object_id '
-                'where indicator_id = %s and users.id = %s and period_begin between %s and %s',
-                (indicator_id, id_users(), first_period, end_period,))
-
-    result_sql_requests = cur.fetchone()[0]
-
-    if result_sql_requests is None:
-        result_sql_requests = 0
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Количество заявок", план')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql_requests)
-    assert requestdict['data'][indicator]['value'] == result_sql_requests
-    return result_sql_requests
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ЗАЯВОК ПРОЦЕНТЫ                     '''
-
-
-def test_operator_requests_percent():
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_requests_created_plan_percent'
-    result_request_sql_fact = float(test_operator_requests_created())
-    result_request_sql_plan = float(test_operator_requests_plan())
-
-    if result_request_sql_plan is None:
-        result_sql = 0
-    else:
-        result_sql = result_request_sql_fact * 100 / result_request_sql_plan
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Количество заявок", процент выполнения')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql)
-    assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5)
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ПОДКЛЮЧЕННЫХ УСЛУГ ФАКТ                       '''
-
-
-def test_operator_connected_all_services():
-    cur_ora_rtk = connection_ora.cursor()
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'connected_all_services_count'
-
-    cur_ora_rtk.execute("""
-    select sum(CNT_ALL) from AGP_V_UNITED_REPORT_RES_LN where AGENT = (:1) and PERIOD = (:1)
-     """, [fio_users(), date_current_oracle])
-
-    result_sql_requests = cur_ora_rtk.fetchone()[0]
-
-    if result_sql_requests is None:
-        result_sql_requests = 0
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\u001B[36mВиджет "Количество подключенных услуг", факт')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql_requests)
-    assert requestdict['data'][indicator]['value'] == result_sql_requests
-    return result_sql_requests
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ПОДКЛЮЧЕННЫХ УСЛУГ ПЛАН                       '''
-
-
-def test_operator_connect_services_plan():
-    cur = conn.cursor()
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'connected_all_services_count_plan'
-    indicator_id = 114
-
-    cur.execute('select sum(value) from plan_objects_indicators '
-                'join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id '
-                'join users on users.id = objects_indicators.object_id '
-                'where indicator_id = %s and users.id = %s and period_begin between %s and %s',
-                (indicator_id, id_users(), first_period, end_period,))
-
-    result_sql = cur.fetchone()[0]
-
-    if result_sql is None:
-        result_sql = 0
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Количество подключенных услуг", план')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql)
-    assert requestdict['data'][indicator]['value'] == result_sql
-    return result_sql
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ПОДКЛЮЧЕННЫХ УСЛУГ ПРОЦЕНТ                       '''
-
-
-def test_operator_all_connect_services_percent():
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'connected_all_services_count_plan_percent'
-    result_sql_fact = float(test_operator_connected_all_services())
-    result_sql_plan = float(test_operator_connect_services_plan())
-
-    if result_sql_plan is None:
-        result_sql = 0
-    else:
-        result_sql = result_sql_fact * 100 / result_sql_plan
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Количество подключенных услуг", процент выполнения')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql)
-    assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5)
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО КОНТАКТОВ ФАКТ                       '''
-
-
-def test_operator_contacts_count():
-    cur_naumen = connection.cursor()
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_contacts_count'
-
-    cur_naumen.execute("""
-    select sum(calls) from mv_user_calls_result_daily
-    where login = %s
-    and date_work between %s and %s
-    and "result" in ('Согласие клиента', 'Отказ клиента')
-     """, (login_non_volga, first_period, end_period,))
-
-    result_sql = cur_naumen.fetchone()[0]
-
-    if result_sql is None:
-        result_sql = 0
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-
-    print('\n\u001B[36mВиджет "Количество контактов", факт')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql)
-    assert requestdict['data'][indicator]['value'] == result_sql
-    return result_sql
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО КОНТАКТОВ ПЛАН                       '''
-
-
-def test_operator_contacts_count_plan():
-    cur = conn.cursor()
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_contacts_count_plan'
-    indicator_id = 2880
-
-    cur.execute("""
-    select sum(value) from plan_objects_indicators
-    join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
-    join users on users.id = objects_indicators.object_id
-    where indicator_id = %s and users.id = %s and period_begin between %s and %s
-    """, (indicator_id, id_users(), first_period, end_period,))
-
-    result_sql = cur.fetchone()[0]
-
-    if result_sql is None:
-        result_sql = 0
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Количество контактов", план')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql)
-    assert requestdict['data'][indicator]['value'] == result_sql
-    return result_sql
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО КОНТАКТОВ ПРОЦЕНТ                       '''
-
-
-def test_operator_contacts_count_percent():
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_contacts_count_plan_percent'
-    result_sql_fact = float(test_operator_contacts_count())
-    result_sql_plan = float(test_operator_contacts_count_plan())
-
-    if result_sql_plan is None:
-        result_sql = 0
-    else:
-        result_sql = result_sql_fact * 100 / result_sql_plan
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Количество контактов", процент выполнения')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql)
-    assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5)
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - РАБОЧИЕ ЧАСЫ ФАКТ                       '''
-
-
-def test_operator_work_hours():
-    cur_naumen = connection.cursor()
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_work_hours'
-
-    cur_naumen.execute("""
-    select sum(duration) from mv_user_status_full_daily
-    where login = %s
-    and date_work between %s and %s
-    and main_status in ('available', 'notavailable')
-     """, (login_non_volga, first_period, end_period,))
-
-    result_sql = cur_naumen.fetchone()[0]
-
-    if result_sql is None:
-        result_sql = 0
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-
-    print('\n\u001B[36mВиджет "Рабочие часы", факт')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql, '. В часах - ', result_sql/3600)
-    assert requestdict['data'][indicator]['value'] == result_sql
-    return result_sql
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - РАБОЧИЕ ЧАСЫ ПЛАН                       '''
-
-
-def test_operator_work_hours_plan():
-    cur = conn.cursor()
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_work_hours_plan'
-    indicator_id = 2941
-
-    cur.execute("""
-    select sum(value) from plan_objects_indicators
-    join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
-    join users on users.id = objects_indicators.object_id
-    where indicator_id = %s and users.id = %s and period_begin between %s and %s
-    """, (indicator_id, id_users(), first_period, end_period,))
-
-    result_sql = cur.fetchone()[0]
-
-    if result_sql is None:
-        result_sql = 0
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Рабочие часы", план')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql, '. В часах - ', result_sql/3600)
-    assert requestdict['data'][indicator]['value'] == result_sql
-    return result_sql
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - РАБОЧИЕ ЧАСЫ ПРОЦЕНТ                       '''
-
-
-def test_operator_work_hours_percent():
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_work_hours_plan_percent'
-    result_sql_fact = float(test_operator_work_hours())
-    result_sql_plan = float(test_operator_work_hours_plan())
-
-    if result_sql_plan is None:
-        result_sql = 0
-    else:
-        result_sql = result_sql_fact * 100 / result_sql_plan
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Рабочие часы", процент выполнения')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql)
-    assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5)
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОНВЕРСИЯ ИЗ КОНТАКТОВ В ЗАЯВКИ                       '''
-
-
-def test_operator_contacts_to_requests_conversion():
-    cur_naumen = connection.cursor()
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_contacts_to_requests_conversion'
-
-    cur_naumen.execute("""
-    select ((select sum(calls) from mv_user_calls_result_daily  
-    where login = %s 
-    and date_work between %s and %s
-    and "result" = 'Согласие клиента') * 100)
-    /
-    (select sum(calls) from mv_user_calls_result_daily  
-    where login = %s 
-    and date_work between %s and %s
-    and "result" in ('Согласие клиента', 'Отказ клиента'))
-     """, (login_non_volga, first_period, end_period, login_non_volga, first_period, end_period,))
-
-    result_sql = cur_naumen.fetchone()[0]
-
-    if result_sql is None:
-        result_sql = 0
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Конверсия из контактов в заявки"')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result_sql)
-    assert round(requestdict['data'][indicator]['value'], 5) == round(float(result_sql), 5)
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОНВЕРСИЯ ИЗ КОНТАКТОВ В ДОГОВОРЫ                       '''
-
-
-def test_operator_contacts_to_connected_conversion():
-    current_connected_services = test_operator_connected_all_services()
-    current_contacts_count = test_operator_contacts_count()
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_contacts_to_connected_conversion'
-
-    if current_contacts_count is None:
-        result = 0
-    else:
-        result = current_connected_services * 100 / current_contacts_count
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Конверсия из контактов в договоры"')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result)
-    assert round(requestdict['data'][indicator]['value'], 5) == round(float(result), 5)
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОНВЕРСИЯ ИЗ ЗАЯВОК В ДОГОВОРЫ                       '''
-
-
-def test_operator_requests_to_connected_conversion():
-    current_connected_services = test_operator_connected_all_services()
-    current_request_count = test_operator_requests_created()
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_requests_to_connected_conversion'
-
-    if current_connected_services is None:
-        result = 0
-    else:
-        result = current_connected_services * 100 / current_request_count
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Конверсия из заявок в договоры"')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result)
-    assert round(requestdict['data'][indicator]['value'], 5) == round(float(result), 5)
-
-
-'''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - "ЭФФЕКТИВНОСТЬ"                       '''
-
-
-def test_operator_efficiency():
-    current_work_hours = test_operator_work_hours() / 3600
-    current_contacts_count = test_operator_contacts_count()
-    first_period = str(first_day_of_current_period)
-    end_period = str(last_day_of_current_month)
-    indicator = 'rtk_volga_efficiency'
-
-    if current_work_hours is None:
-        result = 0
-    else:
-        result = current_contacts_count / current_work_hours
-
-    body = {
-            "indicator_acronim": indicator,
-            "object_id": id_users(),
-            "object_type": object_type,
-            "parameters":
-            {
-                "period_begin": first_period,
-                "period_end": end_period,
-                "organization_id": organization_id
-            }
-            }
-
-    response = requests.post(url, json=body, headers=headers)
-    assert response.status_code != 500, "internal server error"
-    assert response.status_code != 405, "Ошибка метода отправки"
-    requestdict = json.loads(response.content)
-    print('\n\n\u001B[36mВиджет "Эффективность"')
-    print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
-    print('\u001B[33msql:\u001B[0m', result)
-    assert round(requestdict['data'][indicator]['value'], 5) == round(float(result), 5)
-
-
-# закрытие подключения к бд по ssh
-def test_stopserver():
-    stop(conn, conn_node, server)
-    stop_naumen(connection)
-    stop_oracle(connection_ora)
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ЗАЯВОК ПЛАН                      '''
+#
+#
+# def test_operator_requests_plan():
+#     cur = conn.cursor()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_requests_created_plan'
+#     indicator_id = 2876
+#
+#     cur.execute('select sum(value) from plan_objects_indicators '
+#                 'join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id '
+#                 'join users on users.id = objects_indicators.object_id '
+#                 'where indicator_id = %s and users.id = %s and period_begin between %s and %s',
+#                 (indicator_id, id_users(), first_period, end_period,))
+#
+#     result_sql_requests = cur.fetchone()[0]
+#
+#     if result_sql_requests is None:
+#         result_sql_requests = 0
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Количество заявок", план')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql_requests)
+#     assert requestdict['data'][indicator]['value'] == result_sql_requests
+#     return result_sql_requests
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ЗАЯВОК ПРОЦЕНТЫ                     '''
+#
+#
+# def test_operator_requests_percent():
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_requests_created_plan_percent'
+#     result_request_sql_fact = float(test_operator_requests_created())
+#     result_request_sql_plan = float(test_operator_requests_plan())
+#
+#     if result_request_sql_plan is None:
+#         result_sql = 0
+#     else:
+#         result_sql = result_request_sql_fact * 100 / result_request_sql_plan
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Количество заявок", процент выполнения')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql)
+#     assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5)
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ПОДКЛЮЧЕННЫХ УСЛУГ ФАКТ                       '''
+#
+#
+# def test_operator_connected_all_services():
+#     cur_ora_rtk = connection_ora.cursor()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_connected_services_count'
+#
+#     cur_ora_rtk.execute("""
+#     select sum(CNT_ALL) from AGP_V_UNITED_REPORT_RES_LN where AGENT = (:1) and PERIOD = (:1)
+#      """, [fio_users(), date_current_oracle])
+#
+#     result_sql_requests = cur_ora_rtk.fetchone()[0]
+#
+#     if result_sql_requests is None:
+#         result_sql_requests = 0
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\u001B[36mВиджет "Количество подключенных услуг", факт')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql_requests)
+#     assert requestdict['data'][indicator]['value'] == result_sql_requests
+#     return result_sql_requests
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ПОДКЛЮЧЕННЫХ УСЛУГ ПЛАН                       '''
+#
+#
+# def test_operator_connect_services_plan():
+#     cur = conn.cursor()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'connected_all_services_count_plan'
+#     indicator_id = 103
+#
+#     cur.execute('select sum(value) from plan_objects_indicators '
+#                 'join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id '
+#                 'join users on users.id = objects_indicators.object_id '
+#                 'where indicator_id = %s and users.id = %s and period_begin between %s and %s',
+#                 (indicator_id, id_users(), first_period, end_period,))
+#
+#     result_sql = cur.fetchone()[0]
+#
+#     if result_sql is None:
+#         result_sql = 0
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Количество подключенных услуг", план')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql)
+#     assert requestdict['data'][indicator]['value'] == result_sql
+#     return result_sql
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО ПОДКЛЮЧЕННЫХ УСЛУГ ПРОЦЕНТ                       '''
+#
+#
+# def test_operator_all_connect_services_percent():
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'connected_all_services_count_plan_percent'
+#     result_sql_fact = float(test_operator_connected_all_services())
+#     result_sql_plan = float(test_operator_connect_services_plan())
+#
+#     if result_sql_plan is None:
+#         result_sql = 0
+#     else:
+#         result_sql = result_sql_fact * 100 / result_sql_plan
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Количество подключенных услуг", процент выполнения')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql)
+#     assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5)
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО КОНТАКТОВ ФАКТ                       '''
+#
+#
+# def test_operator_contacts_count():
+#     cur_naumen = connection.cursor()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_contacts_count'
+#
+#     cur_naumen.execute("""
+#     select sum(calls) from mv_user_calls_result_daily
+#     where login = %s
+#     and date_work between %s and %s
+#     and "result" in ('Согласие клиента', 'Отказ клиента')
+#      """, (login_non_volga, first_period, end_period,))
+#
+#     result_sql = cur_naumen.fetchone()[0]
+#
+#     if result_sql is None:
+#         result_sql = 0
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#
+#     print('\n\u001B[36mВиджет "Количество контактов", факт')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql)
+#     assert requestdict['data'][indicator]['value'] == result_sql
+#     return result_sql
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО КОНТАКТОВ ПЛАН                       '''
+#
+#
+# def test_operator_contacts_count_plan():
+#     cur = conn.cursor()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_contacts_count_plan'
+#     indicator_id = 2879
+#
+#     cur.execute("""
+#     select sum(value) from plan_objects_indicators
+#     join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
+#     join users on users.id = objects_indicators.object_id
+#     where indicator_id = %s and users.id = %s and period_begin between %s and %s
+#     """, (indicator_id, id_users(), first_period, end_period,))
+#
+#     result_sql = cur.fetchone()[0]
+#
+#     if result_sql is None:
+#         result_sql = 0
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Количество контактов", план')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql)
+#     assert requestdict['data'][indicator]['value'] == result_sql
+#     return result_sql
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОЛИЧЕСТВО КОНТАКТОВ ПРОЦЕНТ                       '''
+#
+#
+# def test_operator_contacts_count_percent():
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_contacts_count_plan_percent'
+#     result_sql_fact = float(test_operator_contacts_count())
+#     result_sql_plan = float(test_operator_contacts_count_plan())
+#
+#     if result_sql_plan is None:
+#         result_sql = 0
+#     else:
+#         result_sql = result_sql_fact * 100 / result_sql_plan
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Количество контактов", процент выполнения')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql)
+#     assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5)
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - РАБОЧИЕ ЧАСЫ ФАКТ                       '''
+#
+#
+# def test_operator_work_hours():
+#     cur_naumen = connection.cursor()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_work_hours'
+#
+#     cur_naumen.execute("""
+#     select sum(duration) from mv_user_status_full_daily
+#     where login = %s
+#     and date_work between %s and %s
+#     and main_status in ('available', 'notavailable')
+#      """, (login_non_volga, first_period, end_period,))
+#
+#     result_sql = cur_naumen.fetchone()[0]
+#
+#     if result_sql is None:
+#         result_sql = 0
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#
+#     print('\n\u001B[36mВиджет "Рабочие часы", факт')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql, '. В часах - ', result_sql/3600)
+#     assert requestdict['data'][indicator]['value'] == result_sql
+#     return result_sql
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - РАБОЧИЕ ЧАСЫ ПЛАН                       '''
+#
+#
+# def test_operator_work_hours_plan():
+#     cur = conn.cursor()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_work_hours_plan'
+#     indicator_id = 2941
+#
+#     cur.execute("""
+#     select sum(value) from plan_objects_indicators
+#     join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
+#     join users on users.id = objects_indicators.object_id
+#     where indicator_id = %s and users.id = %s and period_begin between %s and %s
+#     """, (indicator_id, id_users(), first_period, end_period,))
+#
+#     result_sql = cur.fetchone()[0]
+#
+#     if result_sql is None:
+#         result_sql = 0
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Рабочие часы", план')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql, '. В часах - ', result_sql/3600)
+#     assert requestdict['data'][indicator]['value'] == result_sql
+#     return result_sql
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - РАБОЧИЕ ЧАСЫ ПРОЦЕНТ                       '''
+#
+#
+# def test_operator_work_hours_percent():
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_work_hours_plan_percent'
+#     result_sql_fact = float(test_operator_work_hours())
+#     result_sql_plan = float(test_operator_work_hours_plan())
+#
+#     if result_sql_plan is None:
+#         result_sql = 0
+#     else:
+#         result_sql = result_sql_fact * 100 / result_sql_plan
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Рабочие часы", процент выполнения')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql)
+#     assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5)
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОНВЕРСИЯ ИЗ КОНТАКТОВ В ЗАЯВКИ                       '''
+#
+#
+# def test_operator_contacts_to_requests_conversion():
+#     cur_naumen = connection.cursor()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_contacts_to_requests_conversion'
+#
+#     cur_naumen.execute("""
+#     select ((select sum(calls) from mv_user_calls_result_daily
+#     where login = %s
+#     and date_work between %s and %s
+#     and "result" = 'Согласие клиента') * 100)
+#     /
+#     (select sum(calls) from mv_user_calls_result_daily
+#     where login = %s
+#     and date_work between %s and %s
+#     and "result" in ('Согласие клиента', 'Отказ клиента'))
+#      """, (login_non_volga, first_period, end_period, login_non_volga, first_period, end_period,))
+#
+#     result_sql = cur_naumen.fetchone()[0]
+#
+#     if result_sql is None:
+#         result_sql = 0
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Конверсия из контактов в заявки"')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql)
+#     assert round(requestdict['data'][indicator]['value'], 5) == round(float(result_sql), 5)
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОНВЕРСИЯ ИЗ КОНТАКТОВ В ДОГОВОРЫ                       '''
+#
+#
+# def test_operator_contacts_to_connected_conversion():
+#     current_connected_services = test_operator_connected_all_services()
+#     current_contacts_count = test_operator_contacts_count()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_contacts_to_connected_conversion'
+#
+#     if current_contacts_count is None:
+#         result = 0
+#     else:
+#         result = current_connected_services * 100 / current_contacts_count
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Конверсия из контактов в договоры"')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result)
+#     assert round(requestdict['data'][indicator]['value'], 5) == round(float(result), 5)
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - КОНВЕРСИЯ ИЗ ЗАЯВОК В ДОГОВОРЫ                       '''
+#
+#
+# def test_operator_requests_to_connected_conversion():
+#     current_connected_services = test_operator_connected_all_services()
+#     current_request_count = test_operator_requests_created()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_requests_to_connected_conversion'
+#
+#     if current_connected_services is None:
+#         result = 0
+#     else:
+#         result = current_connected_services * 100 / current_request_count
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Конверсия из заявок в договоры"')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result)
+#     assert round(requestdict['data'][indicator]['value'], 5) == round(float(result), 5)
+#
+#
+# '''                    КРАТКИЙ ВЕРХНИЙ ВИДЖЕТ - "ЭФФЕКТИВНОСТЬ"                       '''
+#
+#
+# def test_operator_efficiency():
+#     current_work_hours = test_operator_work_hours() / 3600
+#     current_contacts_count = test_operator_contacts_count()
+#     first_period = str(first_day_of_current_period)
+#     end_period = str(last_day_of_current_month)
+#     indicator = 'rtk_volga_efficiency'
+#
+#     if current_work_hours is None:
+#         result = 0
+#     else:
+#         result = current_contacts_count / current_work_hours
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users(),
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Эффективность"')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result)
+#     assert round(requestdict['data'][indicator]['value'], 5) == round(float(result), 5)
+
+
+# # закрытие подключения к бд по ssh
+# def test_stopserver():
+#     stop(conn, conn_node, server)
+#     stop_naumen(connection)
+#     stop_oracle(connection_ora)
+# def test_stop_db(stopserver):
+#     print('stop')
