@@ -17,9 +17,9 @@ stop_naumen = db_n_rtk.stop_db_naumen
 start_oracle = db_oracle.start_db_oracle
 stop_oracle = db_oracle.stop_db_oracle
 
-login = '13050045Trostina_volga'
-login_non_volga = '13050045Trostina'
-password = "123456"
+login = '58020073_volga'
+login_non_volga = '58020073'
+password = "nFXAB5Q0"
 client_id = 2
 client_secret = '23IzWSgkX5MUlpxSAYJr2o1sM8DRkLXI7vlZFExW'
 grant_type = 'password'
@@ -49,6 +49,13 @@ end_period = str(last_day_of_current_month)
 date_current_year = datetime.datetime.now().year
 date_current_month = datetime.datetime.now().strftime('%m')
 date_current_oracle = str(date_current_year)+str(date_current_month)
+
+
+""" Если вдруг нужно за другую дату, то вот """
+
+# date_current_oracle = 202104
+# first_period = str('2021-04-01')
+# end_period = str('2021-04-30')
 
 
 @pytest.yield_fixture(autouse=True)
@@ -246,3 +253,209 @@ def work_hours_plan(id_users):
         result_sql = 0
     return result_sql
 
+
+""" ********************************* ОДИНОЧНЫЕ ПОДКЛЮЧЕННЫЕ УСЛУГИ ФАКТ ************************************** """
+
+
+@pytest.fixture()
+def connected_services_types_graph(fio_users):
+    cur_ora_rtk = connection_ora.cursor()
+    result = dict()
+
+    ''' Количество услуг ШПД '''
+    cur_ora_rtk.execute("""
+    select sum(CNT_SHPD) from AGP_V_UNITED_REPORT_RES_LN where AGENT = (:1) and PERIOD = (:1)
+     """, [fio_users, date_current_oracle])
+    result_shpd = cur_ora_rtk.fetchone()[0]
+    if result_shpd is None:
+        result_shpd = 0
+    result['shpd'] = result_shpd
+
+    """ Количество услуг Гарантия """
+    cur_ora_rtk.execute("""
+    select sum(CNT_DGO) from AGP_V_UNITED_REPORT_RES_LN where AGENT = (:1) and PERIOD = (:1)
+     """, [fio_users, date_current_oracle])
+    result_dgo = cur_ora_rtk.fetchone()[0]
+    if result_dgo is None:
+        result_dgo = 0
+    result['dgo'] = result_dgo
+
+    """ Количество услуг ИТВ """
+    cur_ora_rtk.execute("""
+    select sum(CNT_IPTV) from AGP_V_UNITED_REPORT_RES_LN where AGENT = (:1) and PERIOD = (:1)
+     """, [fio_users, date_current_oracle])
+    result_iptv = cur_ora_rtk.fetchone()[0]
+    if result_iptv is None:
+        result_iptv = 0
+    result['iptv'] = result_iptv
+
+    """ Количество услуг Маруся """
+    cur_ora_rtk.execute("""
+    select sum(CNT_EQUIP_SMARTSPEAKER) from AGP_V_UNITED_REPORT_RES_LN where AGENT = (:1) and PERIOD = (:1)
+     """, [fio_users, date_current_oracle])
+    result_equip_smartspeaker = cur_ora_rtk.fetchone()[0]
+    if result_equip_smartspeaker is None:
+        result_equip_smartspeaker = 0
+    result['equip_smartspeaker'] = result_equip_smartspeaker
+
+    """ Количество услуг МВНО """
+    cur_ora_rtk.execute("""
+    select sum(CNT_MVNO) from AGP_V_UNITED_REPORT_RES_LN where AGENT = (:1) and PERIOD = (:1)
+     """, [fio_users, date_current_oracle])
+    result_mvno = cur_ora_rtk.fetchone()[0]
+    if result_mvno is None:
+        result_mvno = 0
+    result['mvno'] = result_mvno
+
+    """ Количество услуг ОТА """
+    cur_ora_rtk.execute("""
+    select sum(CNT_OTA) from AGP_V_UNITED_REPORT_RES_LN where AGENT = (:1) and PERIOD = (:1)
+     """, [fio_users, date_current_oracle])
+    result_ota = cur_ora_rtk.fetchone()[0]
+    if result_ota is None:
+        result_ota = 0
+    result['ota'] = result_ota
+
+    """ Количество услуг Винк+ """
+    cur_ora_rtk.execute("""
+    select sum(CNT_EQUIP_ANDRSTB) from AGP_V_UNITED_REPORT_RES_LN where AGENT = (:1) and PERIOD = (:1)
+     """, [fio_users, date_current_oracle])
+    result_equip_andrstb = cur_ora_rtk.fetchone()[0]
+    if result_equip_andrstb is None:
+        result_equip_andrstb = 0
+    result['equip_andrstb'] = result_equip_andrstb
+
+    """ Количество услуг ВН """
+    cur_ora_rtk.execute("""
+    select sum(CNT_EQUIP_VIDEO) from AGP_V_UNITED_REPORT_RES_LN where AGENT = (:1) and PERIOD = (:1)
+     """, [fio_users, date_current_oracle])
+    result_equip_video = cur_ora_rtk.fetchone()[0]
+    if result_equip_video is None:
+        result_equip_video = 0
+    result['equip_video'] = result_equip_video
+
+    return result
+
+
+""" ********************************* ОДИНОЧНЫЕ ПОДКЛЮЧЕННЫЕ УСЛУГИ ПЛАН ************************************** """
+
+
+@pytest.fixture()
+def connected_services_types_graph_plan(id_users, fio_users):
+
+    result = dict()
+    cur = conn.cursor()
+
+    ''' Количество услуг ШПД '''
+    indicator_id_shpd = 2899
+    cur.execute("""
+    select sum(value) from plan_objects_indicators
+    join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
+    join users on users.id = objects_indicators.object_id
+    where indicator_id = %s and users.id = %s and period_begin between %s and %s
+    """, (indicator_id_shpd, id_users, first_period, end_period,))
+
+    result_shpd = cur.fetchone()[0]
+    if result_shpd is None:
+        result_shpd = 0
+    result['shpd'] = result_shpd
+
+    ''' Количество услуг Гарантия '''
+    indicator_id_dgo = 2904
+    cur.execute("""
+        select sum(value) from plan_objects_indicators
+        join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
+        join users on users.id = objects_indicators.object_id
+        where indicator_id = %s and users.id = %s and period_begin between %s and %s
+        """, (indicator_id_dgo, id_users, first_period, end_period,))
+
+    result_dgo = cur.fetchone()[0]
+    if result_dgo is None:
+        result_dgo = 0
+    result['dgo'] = result_dgo
+
+    ''' Количество услуг ИТВ '''
+    indicator_id_iptv = 2900
+    cur.execute("""
+        select sum(value) from plan_objects_indicators
+        join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
+        join users on users.id = objects_indicators.object_id
+        where indicator_id = %s and users.id = %s and period_begin between %s and %s
+        """, (indicator_id_iptv, id_users, first_period, end_period,))
+
+    result_iptv = cur.fetchone()[0]
+    if result_iptv is None:
+        result_iptv = 0
+    result['iptv'] = result_iptv
+
+    ''' Количество услуг Маруся '''
+    indicator_id_equip_smartspeaker = 2905
+    cur.execute("""
+        select sum(value) from plan_objects_indicators
+        join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
+        join users on users.id = objects_indicators.object_id
+        where indicator_id = %s and users.id = %s and period_begin between %s and %s
+        """, (indicator_id_equip_smartspeaker, id_users, first_period, end_period,))
+
+    result_equip_smartspeaker = cur.fetchone()[0]
+    if result_equip_smartspeaker is None:
+        result_equip_smartspeaker = 0
+    result['equip_smartspeaker'] = result_equip_smartspeaker
+
+    ''' Количество услуг МВНО '''
+    indicator_id_mvno = 2902
+    cur.execute("""
+        select sum(value) from plan_objects_indicators
+        join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
+        join users on users.id = objects_indicators.object_id
+        where indicator_id = %s and users.id = %s and period_begin between %s and %s
+        """, (indicator_id_mvno, id_users, first_period, end_period,))
+
+    result_mvno = cur.fetchone()[0]
+    if result_mvno is None:
+        result_mvno = 0
+    result['mvno'] = result_mvno
+
+    ''' Количество услуг ОТА '''
+    indicator_id_ota = 2901
+    cur.execute("""
+        select sum(value) from plan_objects_indicators
+        join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
+        join users on users.id = objects_indicators.object_id
+        where indicator_id = %s and users.id = %s and period_begin between %s and %s
+        """, (indicator_id_ota, id_users, first_period, end_period,))
+
+    result_ota = cur.fetchone()[0]
+    if result_ota is None:
+        result_ota = 0
+    result['ota'] = result_ota
+
+    ''' Количество услуг Винк+ '''
+    indicator_id_equip_andrstb = 2906
+    cur.execute("""
+        select sum(value) from plan_objects_indicators
+        join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
+        join users on users.id = objects_indicators.object_id
+        where indicator_id = %s and users.id = %s and period_begin between %s and %s
+        """, (indicator_id_equip_andrstb, id_users, first_period, end_period,))
+
+    result_equip_andrstb = cur.fetchone()[0]
+    if result_equip_andrstb is None:
+        result_equip_andrstb = 0
+    result['equip_andrstb'] = result_equip_andrstb
+
+    ''' Количество услуг ВН '''
+    indicator_id_equip_video = 2903
+    cur.execute("""
+        select sum(value) from plan_objects_indicators
+        join objects_indicators on objects_indicators.id = plan_objects_indicators.object_indicator_id
+        join users on users.id = objects_indicators.object_id
+        where indicator_id = %s and users.id = %s and period_begin between %s and %s
+        """, (indicator_id_equip_video, id_users, first_period, end_period,))
+
+    result_equip_video = cur.fetchone()[0]
+    if result_equip_video is None:
+        result_equip_video = 0
+    result['equip_video'] = result_equip_video
+
+    return result
