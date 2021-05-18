@@ -459,3 +459,90 @@ def connected_services_types_graph_plan(id_users, fio_users):
     result['equip_video'] = result_equip_video
 
     return result
+
+
+""" ********************************* ЗАНЯТОСТЬ - ЗАНЯТОСТЬ ************************************** """
+
+
+@pytest.fixture()
+def employment_detail_work():
+    cur_n_rtk = connection.cursor()
+
+    cur_n_rtk.execute("""
+    
+    select ((select sum(duration)/3600 from mv_user_status_full_daily
+    where login = %s
+    and date_work between %s and %s
+    and (normal = 'normal' or ringing = 'ringing' or speaking = 'speaking'))*100)
+    /
+    (select sum(duration)/3600 from mv_user_status_full_daily
+    where login = %s
+    and date_work between %s and %s
+    and (normal = 'normal' or ringing = 'ringing' or speaking = 'speaking' or wrapup = 'wrapup'))
+
+    """, (login_non_volga, first_period, end_period, login_non_volga, first_period, end_period,))
+
+    result_sql = cur_n_rtk.fetchone()[0]
+
+    if result_sql is None:
+        result_sql = 0
+
+    return result_sql
+
+
+""" ********************************* ЗАНЯТОСТЬ - ПОСТОБРАБОТКА ************************************** """
+
+
+@pytest.fixture()
+def employment_detail_idle():
+    cur_n_rtk = connection.cursor()
+
+    cur_n_rtk.execute("""
+
+    select ((select sum(duration)/3600 from mv_user_status_full_daily
+    where login = %s
+    and date_work between %s and %s
+    and wrapup = 'wrapup' and normal is null and ringing is null and speaking is null)*100)
+    /
+    (select sum(duration)/3600 from mv_user_status_full_daily
+    where login = %s
+    and date_work between %s and %s
+    and (normal = 'normal' or ringing = 'ringing' or speaking = 'speaking' or wrapup = 'wrapup'))
+
+    """, (login_non_volga, first_period, end_period, login_non_volga, first_period, end_period,))
+
+    result_sql = cur_n_rtk.fetchone()[0]
+
+    if result_sql is None:
+        result_sql = 0
+
+    return result_sql
+
+
+""" ********************************* ВРЕМЯ ОФОРМЛЕНИЯ ЗАЯВКИ ************************************** """
+
+
+@pytest.fixture()
+def talk_time_to_connected_services():
+
+    """
+    Вычисление времени, затраченного на оформление одной заявки:
+    talk_time в таблице подключенных услуг для строк с результатом звонка "Согласие клиента"
+    """
+
+    cur_n_rtk = connection.cursor()
+    cur_n_rtk.execute("""
+    
+    select (select sum(talk_time) from mv_user_calls_result_daily
+    where login = %s
+    and date_work between %s and %s
+    and "result" in ('Согласие клиента'))
+
+    """, (login_non_volga, first_period, end_period,))
+
+    result_sql = cur_n_rtk.fetchone()[0]
+
+    if result_sql is None:
+        result_sql = 0
+
+    return result_sql
