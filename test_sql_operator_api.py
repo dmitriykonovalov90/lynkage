@@ -16,15 +16,15 @@ start_oracle = db_oracle.start_db_oracle
 stop_oracle = db_oracle.stop_db_oracle
 
 login = '58080013_volga'
-login_non_volga = '58080013'
+# login_non_volga = '58080013'
 password = "YhgxFoLW"
 client_id = 2
 client_secret = '23IzWSgkX5MUlpxSAYJr2o1sM8DRkLXI7vlZFExW'
 grant_type = 'password'
 organization = 'rtk'
-salegroup_id = 60
+# salegroup_id = 60
 organization_id = 3
-partner_uuid = 'corebo00000000000lt6e97a8cauvg80'
+# partner_uuid = 'corebo00000000000lt6e97a8cauvg80'
 object_type = 'user'
 url = 'https://api.test.navigator.lynkage.ru/formulaConstructor/get'
 headers = btoken.get_token(login, password, client_secret, grant_type, client_id, organization)
@@ -536,7 +536,7 @@ def test_operator_contacts_to_connected_conversion(connected_all_services, conta
     indicator = 'rtk_volga_contacts_to_connected_conversion'
 
     """
-    ФОРМУЛА: 
+    ФОРМУЛА:
     Количество подключенных услуг * 100% / количество контактов
     ПОДРОБНЕЕ:
     CNT_ALL FROM AGP_V_UNITED_REPORT_RES_LN * 100 / "result" in ('Согласие клиента', 'Отказ клиента')
@@ -576,10 +576,10 @@ def test_operator_requests_to_connected_conversion(connected_all_services, reque
     indicator = 'rtk_volga_requests_to_connected_conversion'
 
     """
-    ФОРМУЛА: 
+    ФОРМУЛА:
     Количество подключенных услуг * 100% / количество заявок
     ПОДРОБНЕЕ:
-    CNT_ALL FROM AGP_V_UNITED_REPORT_RES_LN * 100 / "result" = 'Согласие клиента' 
+    CNT_ALL FROM AGP_V_UNITED_REPORT_RES_LN * 100 / "result" = 'Согласие клиента'
     """
 
     if request_created == 0:
@@ -914,7 +914,7 @@ def test_operator_aht(work_hours, contacts_count, id_users):
     '''
     ФОРМУЛА:
     Рабочие часы в минутах (!) / количество контактов
-    ПОДРОБНЕЕ: 
+    ПОДРОБНЕЕ:
     main_status in ('available', 'notavailable') / "result" in ('Согласие клиента', 'Отказ клиента')
     При проверке производится округление до 5 знаков
     '''
@@ -955,7 +955,7 @@ def test_operator_requests_per_hour(work_hours, request_created, id_users):
     '''
     ФОРМУЛА:
     Созданные заявки / Рабочие часы (в часах)
-    ПОДРОБНЕЕ: 
+    ПОДРОБНЕЕ:
     "result" in ('Согласие клиента')) / main_status in ('available', 'notavailable')
     При проверке производится округление до 5 знаков
     '''
@@ -996,7 +996,7 @@ def test_operator_contacts_per_hour(work_hours, contacts_count, id_users):
     '''
     ФОРМУЛА:
     Количество контактов / Рабочие часы (в часах)
-    ПОДРОБНЕЕ: 
+    ПОДРОБНЕЕ:
     "result" in ('Согласие клиента', 'Отказ клиента') / main_status in ('available', 'notavailable')
     При проверке производится округление до 5 знаков
     '''
@@ -1037,7 +1037,7 @@ def test_operator_requests_average_processing(talk_time_to_connected_services, r
     '''
     ФОРМУЛА:
     Время, затраченное на подключение услуги (в минутах) / количество подключенных услуг
-    ПОДРОБНЕЕ: 
+    ПОДРОБНЕЕ:
     talk_time "result" in ('Согласие клиента') / 60 / calls "result" in ('Согласие клиента')
     При проверке производится округление до 5 знаков
     '''
@@ -1067,3 +1067,39 @@ def test_operator_requests_average_processing(talk_time_to_connected_services, r
     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
     print('\u001B[33msql:\u001B[0m', result_sql)
     assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5)
+
+
+'''                    ВИДЖЕТ "ПРОГНОЗ ДОХОДА"             '''
+
+
+# def test_operator_requests_average_processing(id_users):
+#     indicator = 'rtk_volga_revenue'
+#
+#     # '''
+#     # ФОРМУЛА:
+#     # Время, затраченное на подключение услуги (в минутах) / количество подключенных услуг
+#     # ПОДРОБНЕЕ:
+#     # talk_time "result" in ('Согласие клиента') / 60 / calls "result" in ('Согласие клиента')
+#     # При проверке производится округление до 5 знаков
+#     # '''
+#
+#     body = {
+#             "indicator_acronim": indicator,
+#             "object_id": id_users,
+#             "object_type": object_type,
+#             "parameters":
+#             {
+#                 "period_begin": first_period,
+#                 "period_end": end_period,
+#                 "organization_id": organization_id
+#             }
+#             }
+#
+#     response = requests.post(url, json=body, headers=headers)
+#     assert response.status_code != 500, "internal server error"
+#     assert response.status_code != 405, "Ошибка метода отправки"
+#     requestdict = json.loads(response.content)
+#     print('\n\n\u001B[36mВиджет "Прогноз дохода"')
+#     print('\u001B[33mapi:\u001B[0m', requestdict['data'][indicator]['value'])
+#     print('\u001B[33msql:\u001B[0m', result_sql)
+#     assert round(requestdict['data'][indicator]['value'], 5) == round(result_sql, 5)

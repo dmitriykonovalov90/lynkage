@@ -1,8 +1,5 @@
 import pytest
-
 import btoken
-import requests
-import json
 import db
 import datetime
 import db_n_rtk
@@ -24,10 +21,7 @@ client_id = 2
 client_secret = '23IzWSgkX5MUlpxSAYJr2o1sM8DRkLXI7vlZFExW'
 grant_type = 'password'
 organization = 'rtk'
-salegroup_id = 60
-organization_id = 3
-partner_uuid = 'corebo00000000000lt6e97a8cauvg80'
-object_type = 'user'
+
 url = 'https://api.test.navigator.lynkage.ru/formulaConstructor/get'
 headers = btoken.get_token(login, password, client_secret, grant_type, client_id, organization)
 
